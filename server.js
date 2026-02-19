@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import cors from 'cors';
-import sqlite3 from 'sqlite3';
+import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,29 +12,32 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Database setup
-const db = new sqlite3.Database('./homeworks.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    db.run(`CREATE TABLE IF NOT EXISTS homeworks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+// Database setup - PostgreSQL
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+});
+
+// Initialize database table
+async function initDB() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS homeworks (
+      id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
       course TEXT,
-      dueDate TEXT,
-      createdAt TEXT,
+      "dueDate" TEXT,
+      "createdAt" TEXT,
       status TEXT,
-      attachmentName TEXT,
+      "attachmentName" TEXT,
       author TEXT
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating table:', err.message);
-      }
-    });
+    )`);
+    console.log('Connected to PostgreSQL database.');
+  } catch (err) {
+    console.error('Error initializing database:', err.message);
   }
-});
+}
+initDB();
 
 app.use(cors());
 app.use(express.json());
@@ -42,45 +45,37 @@ app.use(express.json());
 // Homework Endpoints
 
 // GET /api/homeworks
-app.get('/api/homeworks', (req, res) => {
-  const sql = 'SELECT * FROM homeworks ORDER BY id DESC';
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+app.get('/api/homeworks', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM homeworks ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // POST /api/homeworks
-app.post('/api/homeworks', (req, res) => {
+app.post('/api/homeworks', async (req, res) => {
   const { title, description, course, dueDate, createdAt, status, attachmentName, author } = req.body;
-  const sql = `INSERT INTO homeworks (title, description, course, dueDate, createdAt, status, attachmentName, author) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-  const params = [title, description, course, dueDate, createdAt, status, attachmentName, author];
-
-  db.run(sql, params, function (err) {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json({
-      id: this.lastID,
-      title, description, course, dueDate, createdAt, status, attachmentName, author
-    });
-  });
+  try {
+    const result = await pool.query(
+      `INSERT INTO homeworks (title, description, course, "dueDate", "createdAt", status, "attachmentName", author) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [title, description, course, dueDate, createdAt, status, attachmentName, author]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // DELETE /api/homeworks/:id
-app.delete('/api/homeworks/:id', (req, res) => {
-  const sql = 'DELETE FROM homeworks WHERE id = ?';
-  db.run(sql, req.params.id, function (err) {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json({ message: 'Deleted', changes: this.changes });
-  });
+app.delete('/api/homeworks/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM homeworks WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Deleted', changes: result.rowCount });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // Announcement Endpoints
