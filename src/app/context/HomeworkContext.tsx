@@ -17,6 +17,7 @@ interface HomeworkContextType {
   homeworks: Homework[];
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
   addHomework: (homework: Omit<Homework, "id">) => void;
   deleteHomework: (id: number) => void;
   refreshHomeworks: () => void;
@@ -54,6 +55,7 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   const fetchHomeworks = async () => {
     setLoading(true);
@@ -64,6 +66,7 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(data)) {
         setHomeworks(data);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        setIsOffline(false);
       } else {
         const stored = localStorage.getItem(STORAGE_KEY);
         const fallback = stored ? JSON.parse(stored) : INITIAL_HOMEWORKS;
@@ -72,6 +75,7 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
       setError(null);
     } catch (err) {
       console.error("Failed to fetch homeworks from API:", err);
+      setIsOffline(true);
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -101,8 +105,10 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       await fetchHomeworks();
+      setIsOffline(false);
     } catch (err) {
       console.error("Failed to add homework:", err);
+      setIsOffline(true);
       // Fallback: add locally
       const newHomework: Homework = { ...homeworkData, id: Date.now() };
       const updated = [newHomework, ...homeworks];
@@ -116,8 +122,10 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`/api/homeworks/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       await fetchHomeworks();
+      setIsOffline(false);
     } catch (err) {
       console.error("Failed to delete homework:", err);
+      setIsOffline(true);
       // Fallback: delete locally
       const updated = homeworks.filter(h => h.id !== id);
       setHomeworks(updated);
@@ -135,6 +143,7 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
         homeworks,
         loading,
         error,
+        isOffline,
         addHomework,
         deleteHomework,
         refreshHomeworks

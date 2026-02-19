@@ -44,8 +44,8 @@ const statusConfig = {
 
 export function HomeworkPage() {
   const { isAdmin, user } = useAuth();
-  const { homeworks, loading, error, addHomework, deleteHomework } = useHomework();
-  
+  const { homeworks, loading, error, isOffline, addHomework, deleteHomework } = useHomework();
+
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -81,7 +81,7 @@ export function HomeworkPage() {
         attachmentUrl: newHomework.attachmentUrl || undefined,
         author: user?.name || "Admin",
       });
-      
+
       setShowModal(false);
       setNewHomework({
         title: "",
@@ -127,6 +127,14 @@ export function HomeworkPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {isOffline && (
+        <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 p-3 rounded-lg flex items-center gap-3 text-sm">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <p>
+            Offline Mod: Sunucuya baglanilamadi. Veriler yerel hafizadan gosteriliyor ve degisiklikler kaydedilmeyebilir.
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -243,8 +251,8 @@ export function HomeworkPage() {
                       </span>
                       {hw.attachmentName && (
                         hw.attachmentUrl ? (
-                          <a 
-                            href={hw.attachmentUrl} 
+                          <a
+                            href={hw.attachmentUrl}
                             download={hw.attachmentName}
                             className="flex items-center gap-1 text-xs text-accent hover:underline"
                           >
@@ -372,8 +380,8 @@ export function HomeworkPage() {
                         }
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                          setNewHomework({ 
-                            ...newHomework, 
+                          setNewHomework({
+                            ...newHomework,
                             attachmentName: file.name,
                             attachmentUrl: reader.result as string
                           });

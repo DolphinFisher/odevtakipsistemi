@@ -13,21 +13,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Database setup - PostgreSQL
-const dbUrl = process.env.DATABASE_URL;
 const pool = new pg.Pool({
-  connectionString: dbUrl,
-  // Railway internal connections don't need SSL
-  ssl: dbUrl && !dbUrl.includes('.railway.internal') ? { rejectUnauthorized: false } : false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: false, // Force disable SSL for internal connection
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected PostgreSQL error:', err.message);
+  console.error('Unexpected PostgreSQL error on idle client:', err);
 });
 
-// Initialize database table
 async function initDB() {
   try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS homeworks (
+    const client = await pool.connect();
+    console.log('Successfully connected to PostgreSQL database');
+    await client.query(`CREATE TABLE IF NOT EXISTS homeworks (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
@@ -38,15 +37,29 @@ async function initDB() {
       attachmentname TEXT,
       author TEXT
     )`);
-    console.log('Connected to PostgreSQL database.');
+    client.release();
   } catch (err) {
-    console.error('Error initializing database:', err.message);
+    console.error('Error initializing database:', err);
   }
 }
 initDB();
 
 app.use(cors());
 app.use(express.json());
+
+// Health Check Endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    res.json({ status: 'ok', time: result.rows[0].now, db: 'connected' });
+  } catch (err) {
+    console.error('Health check failed:', err);
+    res.status(500).json({ status: 'error', message: err.message, stack: err.stack });
+  }
+});
+
 
 // Homework Endpoints
 
