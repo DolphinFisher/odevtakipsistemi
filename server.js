@@ -21,15 +21,17 @@ const pool = new pg.Pool({
 // Initialize database table
 async function initDB() {
   try {
+    // One-time migration: drop old table with camelCase columns
+    await pool.query('DROP TABLE IF EXISTS homeworks');
     await pool.query(`CREATE TABLE IF NOT EXISTS homeworks (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
       course TEXT,
-      "dueDate" TEXT,
-      "createdAt" TEXT,
+      duedate TEXT,
+      createdat TEXT,
       status TEXT,
-      "attachmentName" TEXT,
+      attachmentname TEXT,
       author TEXT
     )`);
     console.log('Connected to PostgreSQL database.');
@@ -48,7 +50,19 @@ app.use(express.json());
 app.get('/api/homeworks', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM homeworks ORDER BY id DESC');
-    res.json(result.rows);
+    // Map snake_case columns back to camelCase for frontend
+    const rows = result.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      course: row.course,
+      dueDate: row.duedate,
+      createdAt: row.createdat,
+      status: row.status,
+      attachmentName: row.attachmentname,
+      author: row.author,
+    }));
+    res.json(rows);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -59,10 +73,21 @@ app.post('/api/homeworks', async (req, res) => {
   const { title, description, course, dueDate, createdAt, status, attachmentName, author } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO homeworks (title, description, course, "dueDate", "createdAt", status, "attachmentName", author) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO homeworks (title, description, course, duedate, createdat, status, attachmentname, author) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [title, description, course, dueDate, createdAt, status, attachmentName, author]
     );
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    res.json({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      course: row.course,
+      dueDate: row.duedate,
+      createdAt: row.createdat,
+      status: row.status,
+      attachmentName: row.attachmentname,
+      author: row.author,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
