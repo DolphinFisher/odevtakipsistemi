@@ -55,55 +55,78 @@ export function HomeworkProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load from local storage on mount
-  useEffect(() => {
+  const fetchHomeworks = async () => {
+    setLoading(true);
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setHomeworks(JSON.parse(stored));
+      const response = await fetch('/api/homeworks');
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setHomeworks(data);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } else {
-        // If empty, set initial data
-        setHomeworks(INITIAL_HOMEWORKS);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_HOMEWORKS));
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const fallback = stored ? JSON.parse(stored) : INITIAL_HOMEWORKS;
+        setHomeworks(fallback);
       }
+      setError(null);
     } catch (err) {
-      console.error("Failed to load homeworks from storage:", err);
-      setError("Veriler yuklenirken bir hata olustu.");
+      console.error("Failed to fetch homeworks from API:", err);
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setHomeworks(JSON.parse(stored));
+        } else {
+          setHomeworks(INITIAL_HOMEWORKS);
+        }
+        setError(null);
+      } catch (fallbackErr) {
+        setError("Veriler yuklenirken bir hata olustu.");
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchHomeworks();
   }, []);
 
-  const saveToStorage = (newHomeworks: Homework[]) => {
+  const addHomework = async (homeworkData: Omit<Homework, "id">) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newHomeworks));
-      setHomeworks(newHomeworks);
+      const response = await fetch('/api/homeworks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(homeworkData),
+      });
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      await fetchHomeworks();
     } catch (err) {
-      console.error("Failed to save to storage:", err);
-      setError("Veriler kaydedilirken bir hata olustu.");
+      console.error("Failed to add homework:", err);
+      // Fallback: add locally
+      const newHomework: Homework = { ...homeworkData, id: Date.now() };
+      const updated = [newHomework, ...homeworks];
+      setHomeworks(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
   };
 
-  const addHomework = (homeworkData: Omit<Homework, "id">) => {
-    const newHomework: Homework = {
-      ...homeworkData,
-      id: Date.now(), // Generate unique ID based on timestamp
-    };
-    const updatedHomeworks = [newHomework, ...homeworks];
-    saveToStorage(updatedHomeworks);
-  };
-
-  const deleteHomework = (id: number) => {
-    const updatedHomeworks = homeworks.filter(h => h.id !== id);
-    saveToStorage(updatedHomeworks);
+  const deleteHomework = async (id: number) => {
+    try {
+      const response = await fetch(`/api/homeworks/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      await fetchHomeworks();
+    } catch (err) {
+      console.error("Failed to delete homework:", err);
+      // Fallback: delete locally
+      const updated = homeworks.filter(h => h.id !== id);
+      setHomeworks(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    }
   };
 
   const refreshHomeworks = () => {
-    // Re-read from storage if needed (though state should be in sync)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setHomeworks(JSON.parse(stored));
-    }
+    fetchHomeworks();
   };
 
   return (
