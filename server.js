@@ -3,9 +3,14 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Database setup
 const db = new sqlite3.Database('./homeworks.db', (err) => {
@@ -53,8 +58,8 @@ app.post('/api/homeworks', (req, res) => {
   const { title, description, course, dueDate, createdAt, status, attachmentName, author } = req.body;
   const sql = `INSERT INTO homeworks (title, description, course, dueDate, createdAt, status, attachmentName, author) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
   const params = [title, description, course, dueDate, createdAt, status, attachmentName, author];
-  
-  db.run(sql, params, function(err) {
+
+  db.run(sql, params, function (err) {
     if (err) {
       res.status(400).json({ error: err.message });
       return;
@@ -69,7 +74,7 @@ app.post('/api/homeworks', (req, res) => {
 // DELETE /api/homeworks/:id
 app.delete('/api/homeworks/:id', (req, res) => {
   const sql = 'DELETE FROM homeworks WHERE id = ?';
-  db.run(sql, req.params.id, function(err) {
+  db.run(sql, req.params.id, function (err) {
     if (err) {
       res.status(400).json({ error: err.message });
       return;
@@ -87,12 +92,12 @@ app.get('/api/announcements', async (req, res) => {
 
     $('.posts_group.lm_wrapper.classic.col-3 .post-item').each((index, element) => {
       const $element = $(element);
-      
+
       const title = $element.find('.post-title a').text().trim();
       const content = $element.find('.post-excerpt').text().trim();
       const date = $element.find('.date_label').text().trim();
       const link = $element.find('.post-title a').attr('href');
-      
+
       // Determine category based on content or title keywords (simple logic)
       let category = 'bilgi';
       const text = (title + ' ' + content).toLowerCase();
@@ -133,16 +138,16 @@ app.post('/api/announcement-details', async (req, res) => {
 
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
-    
+
     // Use .first() to avoid concatenating text from multiple matching elements
     let title = $('.post-title').first().text().trim();
     if (!title) {
-        title = $('.entry-title').first().text().trim();
+      title = $('.entry-title').first().text().trim();
     }
     if (!title) {
-        title = $('h1').first().text().trim();
+      title = $('h1').first().text().trim();
     }
-    
+
     const date = $('.date_label').first().text().trim();
 
     // Try multiple possible content selectors
@@ -150,17 +155,17 @@ app.post('/api/announcement-details', async (req, res) => {
       '.section.the_content.has_content .the_content_wrapper', // User specified target
       '.post-wrapper-content', // Primary target
       '.column_one_fourth .post-wrapper-content', // Specific wrapper
-      '.post-content', 
-      '.entry-content', 
+      '.post-content',
+      '.entry-content',
       '.blog-post-content',
       '#content',
       'article',
       '.section_wrapper', // Another common wrapper
-      '.muffin_builder_content' 
+      '.muffin_builder_content'
     ];
 
     let foundContent = null;
-    
+
     // Iterate through selectors to find the best match
     for (const selector of selectors) {
       let fallback = $(selector).html();
@@ -171,46 +176,46 @@ app.post('/api/announcement-details', async (req, res) => {
     }
 
     if (foundContent) {
-       // Clean up
-       const $content = cheerio.load(foundContent, null, false);
-       $content('.share-box').remove();
-       $content('.related-posts').remove();
-       $content('.post-footer').remove();
-       
-       // Transform relative URLs to absolute
-       $content('a, img, iframe, source, object, embed').each((i, el) => {
-         const $el = $content(el);
-         ['href', 'src', 'data'].forEach(attr => {
-           const val = $el.attr(attr);
-           if (val && val.startsWith('/')) {
-             $el.attr(attr, 'https://ydyo.ankaramedipol.edu.tr' + val);
-           }
-         });
-       });
+      // Clean up
+      const $content = cheerio.load(foundContent, null, false);
+      $content('.share-box').remove();
+      $content('.related-posts').remove();
+      $content('.post-footer').remove();
 
-       // Fix PDF display: Transform PDF objects/embeds/links into Google Docs Viewer iframe
-       $content('object[data$=".pdf"], embed[src$=".pdf"]').each((i, el) => {
-          const pdfUrl = $content(el).attr('data') || $content(el).attr('src');
-          if (pdfUrl) {
-            const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-            const iframe = `<iframe src="${viewerUrl}" width="100%" height="800px" style="border: none;"></iframe>`;
-            $content(el).replaceWith(iframe);
+      // Transform relative URLs to absolute
+      $content('a, img, iframe, source, object, embed').each((i, el) => {
+        const $el = $content(el);
+        ['href', 'src', 'data'].forEach(attr => {
+          const val = $el.attr(attr);
+          if (val && val.startsWith('/')) {
+            $el.attr(attr, 'https://ydyo.ankaramedipol.edu.tr' + val);
           }
-       });
+        });
+      });
 
-       // Also look for direct PDF links and append a viewer if it's the main content
-       $content('a[href$=".pdf"]').each((i, el) => {
-          const pdfUrl = $content(el).attr('href');
-          // Check if there is already a viewer for this PDF to avoid duplication
-          if (!$content(`iframe[src*="${encodeURIComponent(pdfUrl)}"]`).length) {
-             const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-             const iframe = `<div style="margin-top: 20px;"><iframe src="${viewerUrl}" width="100%" height="800px" style="border: none;"></iframe></div>`;
-             $content(el).after(iframe);
-          }
-       });
+      // Fix PDF display: Transform PDF objects/embeds/links into Google Docs Viewer iframe
+      $content('object[data$=".pdf"], embed[src$=".pdf"]').each((i, el) => {
+        const pdfUrl = $content(el).attr('data') || $content(el).attr('src');
+        if (pdfUrl) {
+          const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+          const iframe = `<iframe src="${viewerUrl}" width="100%" height="800px" style="border: none;"></iframe>`;
+          $content(el).replaceWith(iframe);
+        }
+      });
 
-       res.json({ title, content: $content.html(), date });
-       return;
+      // Also look for direct PDF links and append a viewer if it's the main content
+      $content('a[href$=".pdf"]').each((i, el) => {
+        const pdfUrl = $content(el).attr('href');
+        // Check if there is already a viewer for this PDF to avoid duplication
+        if (!$content(`iframe[src*="${encodeURIComponent(pdfUrl)}"]`).length) {
+          const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+          const iframe = `<div style="margin-top: 20px;"><iframe src="${viewerUrl}" width="100%" height="800px" style="border: none;"></iframe></div>`;
+          $content(el).after(iframe);
+        }
+      });
+
+      res.json({ title, content: $content.html(), date });
+      return;
     }
 
     // If really nothing found, return error
@@ -219,6 +224,14 @@ app.post('/api/announcement-details', async (req, res) => {
     console.error('Error fetching announcement details:', error);
     res.status(500).json({ error: 'Failed to fetch details' });
   }
+});
+
+// Serve static files from the Vite build output
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// SPA fallback — all non-API routes serve index.html
+app.get('{*path}', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
