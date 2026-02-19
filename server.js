@@ -13,16 +13,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Database setup - PostgreSQL
+const dbUrl = process.env.DATABASE_URL;
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  connectionString: dbUrl,
+  // Railway internal connections don't need SSL
+  ssl: dbUrl && !dbUrl.includes('.railway.internal') ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected PostgreSQL error:', err.message);
 });
 
 // Initialize database table
 async function initDB() {
   try {
-    // One-time migration: drop old table with camelCase columns
-    await pool.query('DROP TABLE IF EXISTS homeworks');
     await pool.query(`CREATE TABLE IF NOT EXISTS homeworks (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
