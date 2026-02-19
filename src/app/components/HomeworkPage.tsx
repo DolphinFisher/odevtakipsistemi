@@ -251,14 +251,41 @@ export function HomeworkPage() {
                       </span>
                       {hw.attachmentName && (
                         hw.attachmentUrl ? (
-                          <a
-                            href={hw.attachmentUrl}
-                            download={hw.attachmentName}
-                            className="flex items-center gap-1 text-xs text-accent hover:underline"
+                          <button
+                            onClick={() => {
+                              try {
+                                // Convert base64 data URI to Blob
+                                const parts = hw.attachmentUrl!.split(';base64,');
+                                const contentType = parts[0].split(':')[1];
+                                const raw = window.atob(parts[1]);
+                                const rawLength = raw.length;
+                                const uInt8Array = new Uint8Array(rawLength);
+                                for (let i = 0; i < rawLength; ++i) {
+                                  uInt8Array[i] = raw.charCodeAt(i);
+                                }
+                                const blob = new Blob([uInt8Array], { type: contentType });
+                                const url = URL.createObjectURL(blob);
+
+                                // Create temporary link to trigger download
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = hw.attachmentName!;
+                                document.body.appendChild(link);
+                                link.click();
+
+                                // Cleanup
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                              } catch (e) {
+                                console.error("Download error:", e);
+                                alert("Dosya indirilirken bir hata olustu.");
+                              }
+                            }}
+                            className="flex items-center gap-1 text-xs text-accent hover:underline focus:outline-none"
                           >
                             <Download className="w-3 h-3" />
                             {hw.attachmentName}
-                          </a>
+                          </button>
                         ) : (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed" title="Dosya bulunamadi">
                             <Download className="w-3 h-3" />
