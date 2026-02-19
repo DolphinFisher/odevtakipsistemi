@@ -401,8 +401,8 @@ export function HomeworkPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        if (file.size > 2 * 1024 * 1024) {
-                          alert("Dosya boyutu 2MB'dan kucuk olmalidir.");
+                        if (file.size > 10 * 1024 * 1024) {
+                          alert("Dosya boyutu 10MB'dan kucuk olmalidir.");
                           return;
                         }
                         const reader = new FileReader();
