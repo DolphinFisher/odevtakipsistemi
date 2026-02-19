@@ -6,7 +6,6 @@ import {
   Clock,
   ArrowRight,
   Bell,
-  Users,
   FileText,
 } from "lucide-react";
 import { useAnnouncement } from "../context/AnnouncementContext";
@@ -43,51 +42,39 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-5 border border-border">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link to="/duyurular" className="bg-card rounded-xl p-5 border border-border hover:shadow-lg hover:border-accent/40 transition-all cursor-pointer group">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <Megaphone className="w-5 h-5 text-blue-500" />
             </div>
             <span className="text-xs text-muted-foreground">Bu Hafta</span>
           </div>
           <p className="text-2xl text-foreground">{newAnnouncementCount}</p>
           <p className="text-sm text-muted-foreground">Yeni Duyuru</p>
-        </div>
+        </Link>
 
-
-        <div className="bg-card rounded-xl p-5 border border-border">
+        <Link to="/odevler" className="bg-card rounded-xl p-5 border border-border hover:shadow-lg hover:border-accent/40 transition-all cursor-pointer group">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <BookOpen className="w-5 h-5 text-orange-500" />
             </div>
             <span className="text-xs text-muted-foreground">Aktif</span>
           </div>
           <p className="text-2xl text-foreground">{activeHomeworks.length}</p>
           <p className="text-sm text-muted-foreground">Guncel Odev</p>
-        </div>
+        </Link>
 
-        <div className="bg-card rounded-xl p-5 border border-border">
+        <Link to="/odevler" className="bg-card rounded-xl p-5 border border-border hover:shadow-lg hover:border-accent/40 transition-all cursor-pointer group">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <FileText className="w-5 h-5 text-green-500" />
             </div>
             <span className="text-xs text-muted-foreground">Toplam</span>
           </div>
           <p className="text-2xl text-foreground">{homeworks.length}</p>
           <p className="text-sm text-muted-foreground">Paylasilan Odev</p>
-        </div>
-
-        <div className="bg-card rounded-xl p-5 border border-border">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-purple-500" />
-            </div>
-            <span className="text-xs text-muted-foreground">Ders</span>
-          </div>
-          <p className="text-2xl text-foreground">6</p>
-          <p className="text-sm text-muted-foreground">Farkli Ders Alani</p>
-        </div>
+        </Link>
       </div>
 
       {/* Content Grid */}
@@ -112,13 +99,12 @@ export function DashboardPage() {
               <div key={a.id} className="p-4 hover:bg-secondary/30 transition-colors">
                 <div className="flex items-start gap-3">
                   <div
-                    className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                      a.type === "onemli"
-                        ? "bg-red-500"
-                        : a.type === "etkinlik"
+                    className={`w-2 h-2 rounded-full mt-2 shrink-0 ${a.type === "onemli"
+                      ? "bg-red-500"
+                      : a.type === "etkinlik"
                         ? "bg-green-500"
                         : "bg-blue-500"
-                    }`}
+                      }`}
                   />
                   <div>
                     <p className="text-sm">{a.title}</p>

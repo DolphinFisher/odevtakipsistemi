@@ -180,22 +180,8 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
-            <p className="text-sm text-muted-foreground mb-2">
-              Demo Hesap:
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-xs">
-                  Admin
-                </span>
-                <span className="text-muted-foreground">
-                  admin@gmail.com / admin123
-                </span>
-              </div>
-            </div>
-          </div>
+
+
         </div>
       </div>
     </div>
