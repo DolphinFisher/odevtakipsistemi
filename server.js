@@ -22,10 +22,15 @@ pool.on('error', (err) => {
   console.error('Unexpected PostgreSQL error on idle client:', err);
 });
 
+// Initialize database table
 async function initDB() {
   try {
     const client = await pool.connect();
     console.log('Successfully connected to PostgreSQL database');
+
+    // TEMPORARY: Drop table to update schema with new column
+    await client.query('DROP TABLE IF EXISTS homeworks');
+
     await client.query(`CREATE TABLE IF NOT EXISTS homeworks (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
@@ -35,6 +40,7 @@ async function initDB() {
       createdat TEXT,
       status TEXT,
       attachmentname TEXT,
+      attachmentcontent TEXT,
       author TEXT
     )`);
     client.release();
@@ -45,7 +51,7 @@ async function initDB() {
 initDB();
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' })); // Increased limit further just in case
 
 // Health Check Endpoint
 app.get('/api/health', async (req, res) => {
@@ -59,7 +65,6 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ status: 'error', message: err.message, stack: err.stack });
   }
 });
-
 
 // Homework Endpoints
 
@@ -77,6 +82,7 @@ app.get('/api/homeworks', async (req, res) => {
       createdAt: row.createdat,
       status: row.status,
       attachmentName: row.attachmentname,
+      attachmentUrl: row.attachmentcontent, // Map content back to url
       author: row.author,
     }));
     res.json(rows);
@@ -87,11 +93,11 @@ app.get('/api/homeworks', async (req, res) => {
 
 // POST /api/homeworks
 app.post('/api/homeworks', async (req, res) => {
-  const { title, description, course, dueDate, createdAt, status, attachmentName, author } = req.body;
+  const { title, description, course, dueDate, createdAt, status, attachmentName, attachmentUrl, author } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO homeworks (title, description, course, duedate, createdat, status, attachmentname, author) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [title, description, course, dueDate, createdAt, status, attachmentName, author]
+      `INSERT INTO homeworks (title, description, course, duedate, createdat, status, attachmentname, attachmentcontent, author) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [title, description, course, dueDate, createdAt, status, attachmentName, attachmentUrl, author]
     );
     const row = result.rows[0];
     res.json({
@@ -103,6 +109,7 @@ app.post('/api/homeworks', async (req, res) => {
       createdAt: row.createdat,
       status: row.status,
       attachmentName: row.attachmentname,
+      attachmentUrl: row.attachmentcontent,
       author: row.author,
     });
   } catch (err) {
